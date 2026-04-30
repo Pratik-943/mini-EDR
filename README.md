@@ -56,6 +56,8 @@ The agent will silently download into the hidden temporary directory and launch 
 ---
 
 ## 🛠️ Advanced: Recompiling the Agent
+*(Note: A pre-compiled `agent.exe` is already included in the `dist/` folder of this repository. You only need to follow these steps if you change the backend IP address or modify the agent code.)*
+
 If you need to change the Hardcoded IP Address for the agent, you must recompile the payload.
 
 1. Open `agent/config/settings.py` and modify `BACKEND_URL` to match your Ubuntu Server IP.

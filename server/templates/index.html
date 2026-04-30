@@ -47,9 +47,19 @@
             <span class="material-symbols-outlined text-primary text-4xl">security</span>
             <h1 class="text-3xl font-black tracking-widest text-primary uppercase">Mini-EDR</h1>
         </div>
-        <div class="flex items-center gap-2 bg-surface px-4 py-2 rounded-full border border-white/10">
-            <span class="w-3 h-3 bg-primary rounded-full animate-pulse"></span>
-            <span class="text-sm font-bold tracking-widest">SYSTEM ONLINE</span>
+        <div class="flex items-center gap-4">
+            <div class="bg-surface border border-white/10 rounded-lg px-3 py-1.5 flex items-center gap-2">
+                <span class="material-symbols-outlined text-xs text-gray-400">smart_toy</span>
+                <select id="model-select" class="bg-transparent text-xs font-bold tracking-wider text-primary outline-none appearance-none cursor-pointer" onchange="setModel()">
+                    <option value="llama3.2:1b">llama3.2:1b</option>
+                    <option value="qwen2.5:0.5b">qwen2.5:0.5b</option>
+                    <option value="llama3.2:3b">llama3.2:3b</option>
+                </select>
+            </div>
+            <div class="flex items-center gap-2 bg-surface px-4 py-2 rounded-full border border-white/10">
+                <span class="w-3 h-3 bg-primary rounded-full animate-pulse"></span>
+                <span class="text-sm font-bold tracking-widest">SYSTEM ONLINE</span>
+            </div>
         </div>
     </header>
 
@@ -111,8 +121,14 @@
                         
                         // Determine type
                         const isCritical = alertStr.includes("YARA_MATCH") || alertStr.includes("FILE_QUARANTINED") || alertStr.includes("RECEIVED ALERT");
-                        const badgeColor = isCritical ? "bg-error text-white" : "bg-secondary text-black";
-                        const badgeText = isCritical ? "CRITICAL" : "INFO";
+                        const isAI = alertStr.includes("AI_DETECTED");
+                        let badgeColor = isCritical ? "bg-error text-white" : "bg-secondary text-black";
+                        let badgeText = isCritical ? "CRITICAL" : "INFO";
+                        
+                        if (isAI) {
+                            badgeColor = "bg-[#FF00FF] text-white";
+                            badgeText = "AI DETECTED";
+                        }
                         
                         // Clean up the message for display
                         let cleanMessage = alertStr.replace(/\[ENDPOINT:.*?\] /, '');
@@ -138,6 +154,27 @@
 
         // Poll every 3 seconds
         setInterval(fetchAlerts, 3000);
+        
+        async function fetchModel() {
+            try {
+                const res = await fetch('/api/settings/model');
+                const data = await res.json();
+                document.getElementById('model-select').value = data.model;
+            } catch (err) {}
+        }
+        
+        async function setModel() {
+            const model = document.getElementById('model-select').value;
+            try {
+                await fetch('/api/settings/model', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({model_name: model})
+                });
+            } catch (err) {}
+        }
+
+        fetchModel();
         fetchAlerts();
     </script>
 </body>

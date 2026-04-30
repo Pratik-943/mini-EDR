@@ -6,6 +6,11 @@ import uvicorn
 from loguru import logger
 import json
 import os
+import asyncio
+import requests
+
+OLLAMA_MODEL = "llama3.2:1b"
+sequence_buffer = {}
 
 app = FastAPI(title="Mini-EDR Central Backend")
 
@@ -18,15 +23,61 @@ class LogEntry(BaseModel):
     message: str
     record: Dict[str, Any]
 
+async def analyze_sequence(client_host: str, logs: list):
+    global OLLAMA_MODEL
+    prompt = f"You are a Cybersecurity AI analyzing endpoint telemetry. Does this sequence of events indicate ransomware or malicious behavior? Reply ONLY with the word 'MALICIOUS' or 'BENIGN'. Sequence:\n{json.dumps(logs)}"
+    try:
+        def query_ollama():
+            return requests.post("http://localhost:11434/api/generate", json={
+                "model": OLLAMA_MODEL,
+                "prompt": prompt,
+                "stream": False
+            }, timeout=10).json()
+            
+        res = await asyncio.to_thread(query_ollama)
+        response_text = res.get("response", "").strip().upper()
+        
+        if "MALICIOUS" in response_text:
+            logger.warning(f"[ENDPOINT: {client_host}] RECEIVED ALERT: AI_DETECTED_MALICIOUS_SEQUENCE | MODEL={OLLAMA_MODEL} | EVENTS={len(logs)}")
+    except Exception as e:
+        # Silently fail if Ollama is not running or model not found
+        pass
+
 @app.post("/api/logs")
 async def receive_log(request: Request, entry: LogEntry):
     client_host = request.client.host if request.client else "Unknown"
+    
+    # Add to sequence buffer
+    if client_host not in sequence_buffer:
+        sequence_buffer[client_host] = []
+    
+    sequence_buffer[client_host].append(entry.message)
+    
+    # If we have 5 events, run AI analysis
+    if len(sequence_buffer[client_host]) >= 5:
+        logs_to_analyze = sequence_buffer[client_host].copy()
+        sequence_buffer[client_host] = []
+        asyncio.create_task(analyze_sequence(client_host, logs_to_analyze))
+        
     # Simply log the received message using the server's logger
     if "ALERT" in entry.message:
         logger.warning(f"[ENDPOINT: {client_host}] RECEIVED ALERT: {entry.message}")
     else:
         logger.info(f"[ENDPOINT: {client_host}] RECEIVED LOG: {entry.message}")
     return {"status": "success"}
+
+class SettingsModel(BaseModel):
+    model_name: str
+
+@app.post("/api/settings/model")
+async def set_model(settings: SettingsModel):
+    global OLLAMA_MODEL
+    OLLAMA_MODEL = settings.model_name
+    return {"status": "success", "model": OLLAMA_MODEL}
+    
+@app.get("/api/settings/model")
+async def get_model():
+    return {"model": OLLAMA_MODEL}
 
 @app.get("/api/alerts")
 async def get_alerts():

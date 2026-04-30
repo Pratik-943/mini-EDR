@@ -8,15 +8,37 @@ class AlertEngine:
         self.logger = logger or get_logger()
         self.rules = None
         
-        base_dir = Path(__file__).resolve().parents[1]
-        self.rules_path = base_dir / "rules" / "suspicious.yar"
-        
+        YARA_RULES = """
+rule Suspicious_Extension
+{
+    meta:
+        description = "Detects creation of a .ps1 or .bat file which might be suspicious in certain contexts"
+        severity = "Low"
+    strings:
+        $ps1 = ".ps1" nocase
+        $bat = ".bat" nocase
+        $exe = ".exe" nocase
+    condition:
+        $ps1 or $bat or $exe
+}
+
+rule Suspicious_String_Mimikatz
+{
+    meta:
+        description = "Detects Mimikatz keywords"
+        severity = "High"
+    strings:
+        $m1 = "mimikatz" nocase ascii wide
+        $m2 = "sekurlsa::logonpasswords" nocase ascii wide
+    condition:
+        any of them
+}
+        """
         try:
-            if self.rules_path.exists():
-                self.rules = yara.compile(filepath=str(self.rules_path))
-                self.logger.info("YARA rules loaded successfully")
-        except Exception:
-            self.logger.exception("Failed to compile YARA rules")
+            self.rules = yara.compile(source=YARA_RULES)
+            self.logger.info("YARA rules loaded successfully")
+        except Exception as e:
+            self.logger.error(f"Failed to compile YARA rules: {e}")
 
     def scan_file(self, filepath: str):
         """Scans a file against loaded YARA rules and logs an ALERT if there's a match."""

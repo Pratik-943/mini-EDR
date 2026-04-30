@@ -86,3 +86,40 @@ Once deployed, the agent actively monitors for threats. You can test the detecti
 * **Registry Monitor:** Add a persistence key to `HKCU\Software\Microsoft\Windows\CurrentVersion\Run`.
 
 All alerts will instantly stream to the Ubuntu Web Dashboard!
+
+---
+
+## 🔄 Auto-Start on Reboot (Persistence)
+If you want the system to survive reboots, follow these steps:
+
+### 1. Ubuntu Server Auto-Start (systemd)
+To keep the central server running in the background automatically when Ubuntu restarts:
+```bash
+sudo nano /etc/systemd/system/miniedr.service
+```
+Paste this configuration (adjust the path if necessary):
+```ini
+[Unit]
+Description=Mini-EDR Dashboard Server
+After=network.target
+
+[Service]
+User=root
+WorkingDirectory=/root/mini-EDR/server
+ExecStart=/root/mini-EDR/venv/bin/uvicorn app:app --host 0.0.0.0 --port 8000
+Restart=always
+
+[Install]
+WantedBy=multi-user.target
+```
+Enable and start the service:
+```bash
+sudo systemctl enable miniedr
+sudo systemctl start miniedr
+```
+
+### 2. Windows Agent Auto-Start (Registry Persistence)
+To make the Windows agent launch automatically every time the user logs in, run this in PowerShell on the target machine:
+```powershell
+New-ItemProperty -Path "HKCU:\Software\Microsoft\Windows\CurrentVersion\Run" -Name "MiniEDR_Agent" -Value "$env:TEMP\agent.exe" -PropertyType String -Force
+```

@@ -1,0 +1,23 @@
+# Environments
+.venv/
+venv/
+env/
+
+# PyInstaller
+build/
+dist/
+*.spec
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+
+# Logs
+server_logs/
+agent/logs/
+*.log
+
+# OS Files
+.DS_Store
+Thumbs.db

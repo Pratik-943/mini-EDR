@@ -42,6 +42,30 @@ uvicorn app:app --host 0.0.0.0 --port 8000
 
 ---
 
+## 🧠 2. AI Behavioral Engine Setup (Ollama)
+Mini-EDR uses **Ollama** on the Ubuntu server to perform advanced Behavioral Sequence Analysis without overloading the Windows endpoints.
+
+1. **Install Ollama on Ubuntu:**
+   ```bash
+   curl -fsSL https://ollama.com/install.sh | sh
+   ```
+2. **Download AI Models:**
+   Depending on your server hardware, pull the models you want to use. We recommend lightweight models for systems with lower RAM:
+   
+   *(For 4GB RAM / 2 Cores - Extremely Fast)*
+   ```bash
+   ollama pull qwen2.5:0.5b
+   ollama pull llama3.2:1b
+   ```
+   *(For 8GB+ RAM)*
+   ```bash
+   ollama pull llama3.2:3b
+   ```
+
+Once installed, simply open the Live Dashboard in your browser and use the dropdown menu in the top-right corner to select which AI model you want the server to use for analyzing endpoint telemetry!
+
+---
+
 ## ⚡ 2. Endpoint Deployment (Windows)
 You do **not** need Python installed on your Windows endpoints. The client only needs to run a single fileless execution command.
 

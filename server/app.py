@@ -46,7 +46,7 @@ async def get_alerts():
                             endpoints.add(ip)
                         except: pass
 
-                    if "ALERT" in line or "ACTION_FAILED" in line or "FILE_QUARANTINED" in line or "DASHBOARD ACTION" in line:
+                    if "[ENDPOINT:" in line:
                         alerts.append(line.strip())
                         
                     # Keep only last 50 alerts

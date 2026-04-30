@@ -110,12 +110,14 @@
                         }
                         
                         // Determine type
-                        const isCritical = alertStr.includes("YARA_MATCH") || alertStr.includes("FILE_QUARANTINED");
+                        const isCritical = alertStr.includes("YARA_MATCH") || alertStr.includes("FILE_QUARANTINED") || alertStr.includes("RECEIVED ALERT");
                         const badgeColor = isCritical ? "bg-error text-white" : "bg-secondary text-black";
-                        const badgeText = isCritical ? "CRITICAL" : "ALERT";
+                        const badgeText = isCritical ? "CRITICAL" : "INFO";
                         
                         // Clean up the message for display
                         let cleanMessage = alertStr.replace(/\[ENDPOINT:.*?\] /, '');
+                        cleanMessage = cleanMessage.replace("RECEIVED LOG: ", "");
+                        cleanMessage = cleanMessage.replace("RECEIVED ALERT: ", "");
                         
                         container.innerHTML += `
                         <div class="p-4 bg-[#1a1a1a] border-l-4 ${isCritical ? 'border-error' : 'border-secondary'} rounded flex flex-col md:flex-row md:items-center justify-between gap-4">

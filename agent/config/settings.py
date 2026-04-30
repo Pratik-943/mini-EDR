@@ -13,4 +13,4 @@ PROCESS_POLL_INTERVAL = 1.0
 SLEEP_INTERVAL = 1.0
 
 # Backend Configuration
-BACKEND_URL = "http://127.0.0.1:8000/api/logs"
+BACKEND_URL = "http://192.168.178.160:8000/api/logs"

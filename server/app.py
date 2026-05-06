@@ -162,6 +162,17 @@ async def serve_dashboard():
     except Exception as e:
         return HTMLResponse(content=f"<h1>Dashboard Not Found</h1><p>{e}</p>", status_code=404)
 
+@app.get("/favicon.ico", include_in_schema=False)
+async def favicon():
+    """Return a minimal SVG shield icon to suppress browser 404 errors."""
+    svg = (
+        '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="#00FF9C">'
+        '<path d="M12 2L4 5v6c0 5.25 3.5 10.15 8 11.35C16.5 21.15 20 16.25 20 11V5l-8-3z"/>'
+        "</svg>"
+    )
+    from fastapi.responses import Response
+    return Response(content=svg, media_type="image/svg+xml")
+
 from fastapi.responses import FileResponse
 
 @app.get("/download/agent")

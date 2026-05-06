@@ -1,0 +1,50 @@
+name: Build Windows Agent
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'agent/**'
+      - 'requirements.txt'
+  workflow_dispatch:  # Allow manual trigger from GitHub UI
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt pyinstaller
+
+      - name: Inject Server IP into settings.py
+        shell: powershell
+        run: |
+          $content = Get-Content agent/config/settings.py -Raw
+          $content = $content -replace '<YOUR_SERVER_IP>', '${{ secrets.SERVER_IP }}'
+          Set-Content agent/config/settings.py $content
+          Write-Host "Backend URL configured successfully."
+
+      - name: Build agent.exe with PyInstaller
+        run: pyinstaller --onefile --noconsole --name agent agent/main.py
+
+      - name: Copy agent.exe to server payloads
+        run: |
+          mkdir -p server/payloads
+          copy dist\agent.exe server\payloads\agent.exe
+
+      - name: Commit and push agent.exe back to repo
+        shell: bash
+        run: |
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git config user.name "github-actions[bot]"
+          git add -f server/payloads/agent.exe
+          git diff --staged --quiet || git commit -m "ci: auto-build agent.exe [skip ci]"
+          git push

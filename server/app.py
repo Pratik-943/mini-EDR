@@ -106,8 +106,8 @@ async def get_alerts():
         except Exception as e:
             logger.error(f"Error reading logs: {e}")
     
-    # Mock at least 1 endpoint if empty for testing
-    if len(endpoints) == 0: endpoints.add("192.168.1.100")
+    # Remove the mock data so it shows 0 endpoints if none are active
+    # (Removed mock logic)
         
     return {"alerts": alerts, "endpoints_count": len(endpoints), "endpoints_list": list(endpoints)}
 

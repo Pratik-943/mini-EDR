@@ -66,39 +66,47 @@ Once installed, simply open the Live Dashboard in your browser and use the dropd
 
 ---
 
-## ⚡ 2. Endpoint Deployment (Windows)
+## ⚙️ 3. Configuring the Agent IP (Crucial Step)
+Before deploying the Windows agent, you **must** configure it to point to your Ubuntu server's IP address (e.g., your EC2 Public IP or local network IP).
+
+1. Open `agent/config/settings.py` in your text editor.
+2. Change the `<YOUR_SERVER_IP>` placeholder to match your Ubuntu Server's IP address:
+   ```python
+   BACKEND_URL = "http://<YOUR_SERVER_IP>:8000/api/logs"
+   ```
+
+### Recompiling the Agent
+After updating the IP, you must compile the agent into a `.exe` file.
+
+**On Linux / Ubuntu Server (Primary Method):**
+If you are compiling directly on your Ubuntu server, run:
+```bash
+sudo apt install -y wine
+pip install pyinstaller
+chmod +x build.sh
+./build.sh
+```
+
+**On Windows (Alternative Method):**
+If you are compiling on a Windows machine, simply run:
+```powershell
+.\build.ps1
+```
+
+Once compiled, PyInstaller will generate a new `agent.exe` inside the `dist/` folder. Copy this new executable into your server's `server/payloads/` directory so it can be served to endpoints!
+
+---
+
+## ⚡ 4. Endpoint Deployment (Windows)
 You do **not** need Python installed on your Windows endpoints. The client only needs to run a single fileless execution command.
 
 1. Open **Windows PowerShell as Administrator** on the target machine.
 2. Run the following "Dropper" command (replace the IP address with your Ubuntu server's IP):
 ```powershell
-Invoke-WebRequest -Uri "http://192.168.X.X:8000/download/agent" -OutFile "$env:TEMP\agent.exe"; Start-Process "$env:TEMP\agent.exe" -WindowStyle Hidden
+Invoke-WebRequest -Uri "http://<YOUR_SERVER_IP>:8000/download/agent" -OutFile "$env:TEMP\agent.exe"; Start-Process "$env:TEMP\agent.exe" -WindowStyle Hidden
 ```
 
 The agent will silently download into the hidden temporary directory and launch as a background process. Your Ubuntu Dashboard will immediately show **1 Active Endpoint** and begin streaming telemetry.
-
----
-
-## 🛠️ Advanced: Recompiling the Agent
-*(Note: A pre-compiled `agent.exe` is already included in the `dist/` folder of this repository. You only need to follow these steps if you change the backend IP address or modify the agent code.)*
-
-If you need to change the Hardcoded IP Address for the agent, you must recompile the payload.
-
-1. Open `agent/config/settings.py` and modify `BACKEND_URL` to match your Ubuntu Server IP.
-2. Run the build script:
-   
-   **On Linux/Ubuntu:**
-   ```bash
-   chmod +x build.sh
-   ./build.sh
-   ```
-   
-   **On Windows:**
-   ```powershell
-   .\build.ps1
-   ```
-3. PyInstaller will generate a new executable inside the `dist/` folder.
-4. Copy this new executable into the `server/payloads/` directory. The deployment command will now serve your updated payload!
 
 ---
 

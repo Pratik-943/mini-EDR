@@ -21,3 +21,6 @@ agent/logs/
 # OS Files
 .DS_Store
 Thumbs.db
+
+# Testing
+test_malware.txt

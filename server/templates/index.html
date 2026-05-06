@@ -82,6 +82,18 @@
         </div>
     </div>
 
+    <!-- Endpoint Registry -->
+    <section class="max-w-6xl mx-auto mb-8 glass-card overflow-hidden">
+        <div class="bg-surface/50 border-b border-white/5 p-4">
+            <h2 class="font-bold tracking-widest text-sm flex items-center gap-2">
+                <span class="material-symbols-outlined text-sm text-primary">computer</span> REGISTERED ENDPOINTS
+            </h2>
+        </div>
+        <div id="endpoint-registry" class="p-4 grid grid-cols-1 md:grid-cols-2 gap-4">
+            <p class="text-gray-500 text-sm text-center col-span-2 py-6">No endpoints connected yet...</p>
+        </div>
+    </section>
+
     <!-- Live Alert Feed -->
     <main class="max-w-6xl mx-auto glass-card overflow-hidden">
         <div class="bg-surface/50 border-b border-white/5 p-4 flex justify-between items-center">
@@ -106,6 +118,30 @@
                 // Update Metrics
                 document.getElementById('endpoint-count').textContent = data.endpoints_count;
                 document.getElementById('alert-count').textContent = data.alerts.length;
+
+                // Render Endpoint Registry
+                const registry = document.getElementById('endpoint-registry');
+                if (data.endpoints_list && data.endpoints_list.length > 0) {
+                    registry.innerHTML = '';
+                    data.endpoints_list.forEach(ep => {
+                        const memGB = ep.total_memory_gb || '?';
+                        const lastSeen = ep.last_seen ? new Date(ep.last_seen + 'Z').toLocaleTimeString() : 'N/A';
+                        registry.innerHTML += `
+                        <div class="bg-[#1a1a1a] border border-white/5 rounded-lg p-4">
+                            <div class="flex items-center gap-2 mb-3">
+                                <span class="w-2 h-2 bg-primary rounded-full animate-pulse"></span>
+                                <span class="font-bold text-primary tracking-wider">${ep.hostname || ep.ip}</span>
+                            </div>
+                            <div class="grid grid-cols-2 gap-x-4 gap-y-1 text-xs font-mono">
+                                <span class="text-gray-500">IP</span><span class="text-white">${ep.ip}</span>
+                                <span class="text-gray-500">OS</span><span class="text-white">${ep.os}</span>
+                                <span class="text-gray-500">CPU Cores</span><span class="text-white">${ep.cpu_count}</span>
+                                <span class="text-gray-500">RAM</span><span class="text-white">${memGB} GB</span>
+                                <span class="text-gray-500">Last Seen</span><span class="text-secondary">${lastSeen}</span>
+                            </div>
+                        </div>`;
+                    });
+                }
 
                 // Render Alert Feed
                 const container = document.getElementById('alert-feed');

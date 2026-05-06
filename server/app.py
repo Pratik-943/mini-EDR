@@ -11,6 +11,7 @@ import requests
 
 OLLAMA_MODEL = "llama3.2:1b"
 sequence_buffer = {}
+agent_registry = {}  # { ip: { hostname, os, registered_at, last_seen } }
 
 app = FastAPI(title="Mini-EDR Central Backend")
 
@@ -22,6 +23,31 @@ logger.add(os.path.join(SERVER_LOGS_DIR, "edr_alerts.log"), rotation="10 MB")
 class LogEntry(BaseModel):
     message: str
     record: Dict[str, Any]
+
+class AgentInfo(BaseModel):
+    hostname: str
+    os: str
+    os_version: str
+    cpu_count: int
+    total_memory: int
+
+@app.post("/api/register")
+async def register_agent(request: Request, info: AgentInfo):
+    """Called once by the agent on startup to register itself."""
+    from datetime import datetime
+    client_host = request.client.host if request.client else "Unknown"
+    agent_registry[client_host] = {
+        "hostname": info.hostname,
+        "os": info.os,
+        "os_version": info.os_version,
+        "cpu_count": info.cpu_count,
+        "total_memory_gb": round(info.total_memory / (1024**3), 1),
+        "registered_at": datetime.utcnow().isoformat(),
+        "last_seen": datetime.utcnow().isoformat(),
+        "ip": client_host,
+    }
+    logger.info(f"[ENDPOINT: {client_host}] AGENT_REGISTERED | HOST={info.hostname} | OS={info.os}")
+    return {"status": "registered"}
 
 async def analyze_sequence(client_host: str, logs: list):
     global OLLAMA_MODEL
@@ -45,7 +71,12 @@ async def analyze_sequence(client_host: str, logs: list):
 
 @app.post("/api/logs")
 async def receive_log(request: Request, entry: LogEntry):
+    from datetime import datetime
     client_host = request.client.host if request.client else "Unknown"
+
+    # Update last_seen for this endpoint
+    if client_host in agent_registry:
+        agent_registry[client_host]["last_seen"] = datetime.utcnow().isoformat()
     
     # Add to sequence buffer
     if client_host not in sequence_buffer:
@@ -106,10 +137,11 @@ async def get_alerts():
         except Exception as e:
             logger.error(f"Error reading logs: {e}")
     
-    # Remove the mock data so it shows 0 endpoints if none are active
-    # (Removed mock logic)
-        
-    return {"alerts": alerts, "endpoints_count": len(endpoints), "endpoints_list": list(endpoints)}
+    return {
+        "alerts": alerts,
+        "endpoints_count": len(agent_registry),
+        "endpoints_list": list(agent_registry.values())
+    }
 
 class ActionRequest(BaseModel):
     action: str

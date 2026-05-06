@@ -12,37 +12,7 @@ It features an invisible, fileless agent deployment, real-time YARA scanning, ac
 
 ---
 
-## 🚀 1. Server Setup (Ubuntu)
-All configuration and monitoring is done exclusively on the Ubuntu Server.
-
-### Installation
-Clone this repository to your Ubuntu server and navigate into the directory:
-```bash
-git clone https://github.com/Pratik-943/mini-EDR.git
-cd mini-EDR
-```
-
-### Setup Environment
-Install Python and the required dependencies:
-```bash
-sudo apt update
-sudo apt install -y python3 python3-pip python3-venv
-python3 -m venv venv
-source venv/bin/activate
-pip install -r requirements.txt
-```
-
-### Start the Server
-Run the combined API and Web Dashboard server:
-```bash
-cd server
-uvicorn app:app --host 0.0.0.0 --port 8000
-```
-*You can now open `http://<UBUNTU_IP>:8000/` in any web browser to view the Live Dashboard.*
-
----
-
-## 🧠 2. AI Behavioral Engine Setup (Ollama)
+## 🚀 1. Setup AI Engine (Ollama)
 Mini-EDR uses **Ollama** on the Ubuntu server to perform advanced Behavioral Sequence Analysis without overloading the Windows endpoints.
 
 1. **Install Ollama on Ubuntu:**
@@ -62,12 +32,19 @@ Mini-EDR uses **Ollama** on the Ubuntu server to perform advanced Behavioral Seq
    ollama pull llama3.2:3b
    ```
 
-Once installed, simply open the Live Dashboard in your browser and use the dropdown menu in the top-right corner to select which AI model you want the server to use for analyzing endpoint telemetry!
+---
+
+## 📥 2. Download the Codebase
+Clone this repository to your Ubuntu server and navigate into the directory:
+```bash
+git clone https://github.com/Pratik-943/mini-EDR.git
+cd mini-EDR
+```
 
 ---
 
-## ⚙️ 3. Configuring the Agent IP (Crucial Step)
-Before deploying the Windows agent, you **must** configure it to point to your Ubuntu server's IP address (e.g., your EC2 Public IP or local network IP).
+## ⚙️ 3. Configuring the Agent IP & Compiling (Crucial Step)
+Before starting the server or deploying the Windows agent, you **must** configure it to point to your Ubuntu server's IP address (e.g., your EC2 Public IP or local network IP).
 
 1. Open `agent/config/settings.py` in your text editor.
 2. Change the `<YOUR_SERVER_IP>` placeholder to match your Ubuntu Server's IP address:
@@ -97,7 +74,30 @@ Once compiled, PyInstaller will generate a new `agent.exe` inside the `dist/` fo
 
 ---
 
-## ⚡ 4. Endpoint Deployment (Windows)
+## 📦 4. Install Dependencies
+Install Python and the required dependencies for the central server:
+```bash
+sudo apt update
+sudo apt install -y python3 python3-pip python3-venv
+python3 -m venv venv
+source venv/bin/activate
+pip install -r requirements.txt
+```
+
+---
+
+## 🌐 5. Start the Service
+Run the combined API and Web Dashboard server:
+```bash
+cd server
+uvicorn app:app --host 0.0.0.0 --port 8000
+```
+*You can now open `http://<YOUR_SERVER_IP>:8000/` in any web browser to view the Live Dashboard.*
+*Select which AI model you want the server to use for analyzing endpoint telemetry from the dropdown menu in the top-right corner!*
+
+---
+
+## ⚡ 6. Endpoint Deployment (Windows)
 You do **not** need Python installed on your Windows endpoints. The client only needs to run a single fileless execution command.
 
 1. Open **Windows PowerShell as Administrator** on the target machine.
@@ -121,7 +121,7 @@ All alerts will instantly stream to the Ubuntu Web Dashboard!
 
 ---
 
-## 🔄 Auto-Start on Reboot (Persistence)
+## 🔄 7. Auto-Start on Reboot (Persistence)
 If you want the system to survive reboots, follow these steps:
 
 ### 1. Ubuntu Server Auto-Start (systemd)

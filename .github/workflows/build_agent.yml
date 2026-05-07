@@ -1,4 +1,4 @@
-name: Build Windows Agent
+name: Build Universal Agent
 
 on:
   push:
@@ -24,21 +24,16 @@ jobs:
       - name: Install dependencies
         run: pip install -r requirements.txt pyinstaller
 
-      - name: Inject Server IP into settings.py
-        shell: powershell
-        run: |
-          $content = Get-Content agent/config/settings.py -Raw
-          $content = $content -replace '<YOUR_SERVER_IP>', '${{ secrets.SERVER_IP }}'
-          Set-Content agent/config/settings.py $content
-          Write-Host "Backend URL configured successfully."
-
-      - name: Build agent.exe with PyInstaller
+      - name: Build universal agent.exe
+        # No IP injection needed — the agent reads the URL from command-line args at runtime
         run: pyinstaller --onefile --noconsole --name agent agent/main.py
 
-      - name: Copy agent.exe to server payloads
+      - name: Create payloads directory and copy agent
+        shell: powershell
         run: |
-          mkdir -p server/payloads
-          copy dist\agent.exe server\payloads\agent.exe
+          New-Item -ItemType Directory -Path "server\payloads" -Force
+          Copy-Item "dist\agent.exe" "server\payloads\agent.exe"
+          Write-Host "agent.exe size: $((Get-Item 'server\payloads\agent.exe').Length / 1MB) MB"
 
       - name: Commit and push agent.exe back to repo
         shell: bash
@@ -46,5 +41,5 @@ jobs:
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git config user.name "github-actions[bot]"
           git add -f server/payloads/agent.exe
-          git diff --staged --quiet || git commit -m "ci: auto-build agent.exe [skip ci]"
+          git diff --staged --quiet || git commit -m "ci: auto-build universal agent.exe [skip ci]"
           git push

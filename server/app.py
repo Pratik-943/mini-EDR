@@ -199,21 +199,46 @@ from fastapi.responses import FileResponse
 
 @app.get("/download/agent")
 async def download_agent():
-    """Serves the compiled agent.exe payload to endpoints."""
+    """Serves the compiled universal agent.exe payload to endpoints."""
     base_dir = os.path.dirname(__file__)
-    # Check multiple possible locations since users may build/place it differently
     possible_paths = [
-        os.path.abspath(os.path.join(base_dir, "..", "agent", "agent.exe")),
-        os.path.abspath(os.path.join(base_dir, "..", "dist", "agent.exe")),
         os.path.abspath(os.path.join(base_dir, "payloads", "agent.exe")),
+        os.path.abspath(os.path.join(base_dir, "..", "dist", "agent.exe")),
+        os.path.abspath(os.path.join(base_dir, "..", "agent", "agent.exe")),
         os.path.abspath(os.path.join(base_dir, "..", "agent.exe"))
     ]
-    
     for agent_path in possible_paths:
         if os.path.exists(agent_path):
             return FileResponse(path=agent_path, filename="agent.exe", media_type="application/x-msdownload")
-            
-    return HTMLResponse(content="Agent payload not found on server.", status_code=404)
+    return HTMLResponse(content="Agent payload not found. Run GitHub Actions build first.", status_code=404)
+
+@app.get("/deploy/dropper", response_class=HTMLResponse)
+async def get_dropper(request: Request):
+    """Returns a self-configuring PowerShell one-liner auto-filled with this server's URL."""
+    host = request.headers.get("host", request.client.host)
+    scheme = "https" if request.headers.get("x-forwarded-proto") == "https" else "http"
+    server_url = f"{scheme}://{host}"
+
+    dropper = (
+        f'$s="{server_url}"; '
+        f'Invoke-WebRequest -Uri "$s/download/agent" -OutFile "$env:TEMP\\agent.exe"; '
+        f'Start-Process "$env:TEMP\\agent.exe" -ArgumentList "$s/api/logs" -WindowStyle Hidden'
+    )
+
+    html = f"""<!DOCTYPE html>
+<html style="background:#0a0a0a;color:#fff;font-family:monospace;padding:40px">
+<head><title>Mini-EDR | Deploy Agent</title></head>
+<body>
+<h2 style="color:#00FF9C">&#x1F6E1; Mini-EDR | Endpoint Deployment</h2>
+<p style="color:#aaa">Run this command in <strong>PowerShell as Administrator</strong> on the target Windows machine:</p>
+<div style="background:#1a1a1a;border:1px solid #333;border-radius:8px;padding:20px;word-break:break-all;cursor:pointer" onclick="navigator.clipboard.writeText(this.dataset.cmd)" data-cmd="{dropper}">
+  <code style="color:#00C8FF;font-size:13px">{dropper}</code>
+  <p style="color:#555;font-size:11px;margin-top:8px">Click to copy</p>
+</div>
+<p style="color:#555;font-size:12px;margin-top:20px">The agent silently installs, registers itself, and begins streaming live telemetry to your dashboard.</p>
+<a href="/" style="color:#00FF9C">&#x2190; Back to Dashboard</a>
+</body></html>"""
+    return HTMLResponse(content=html)
 
 if __name__ == "__main__":
     uvicorn.run("app:app", host="0.0.0.0", port=8000, reload=False)

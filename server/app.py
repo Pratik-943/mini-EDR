@@ -13,12 +13,33 @@ OLLAMA_MODEL = "llama3.2:1b"
 sequence_buffer = {}
 agent_registry = {}  # { ip: { hostname, os, registered_at, last_seen } }
 
+REGISTRY_FILE = "server_logs/agent_registry.json"
+
+def load_registry():
+    global agent_registry
+    if os.path.exists(REGISTRY_FILE):
+        try:
+            with open(REGISTRY_FILE, "r") as f:
+                agent_registry = json.load(f)
+        except Exception:
+            agent_registry = {}
+
+def save_registry():
+    try:
+        with open(REGISTRY_FILE, "w") as f:
+            json.dump(agent_registry, f, indent=2)
+    except Exception:
+        pass
+
 app = FastAPI(title="Mini-EDR Central Backend")
 
 # We will save logs to a backend log file
 SERVER_LOGS_DIR = "server_logs"
 os.makedirs(SERVER_LOGS_DIR, exist_ok=True)
 logger.add(os.path.join(SERVER_LOGS_DIR, "edr_alerts.log"), rotation="10 MB")
+
+# Load persisted agent registry on startup
+load_registry()
 
 class LogEntry(BaseModel):
     message: str
@@ -46,6 +67,7 @@ async def register_agent(request: Request, info: AgentInfo):
         "last_seen": datetime.utcnow().isoformat(),
         "ip": client_host,
     }
+    save_registry()  # Persist to disk so it survives server restarts
     logger.info(f"[ENDPOINT: {client_host}] AGENT_REGISTERED | HOST={info.hostname} | OS={info.os}")
     return {"status": "registered"}
 

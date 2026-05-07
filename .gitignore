@@ -8,6 +8,7 @@ build/
 dist/
 *.spec
 !server/payloads/
+!server/payloads/**
 
 # Python
 __pycache__/

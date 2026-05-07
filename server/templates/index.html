@@ -36,10 +36,63 @@
             border-radius: 12px;
         }
         .glow-primary { box-shadow: 0 0 15px rgba(0, 255, 156, 0.15); }
-        .glow-error { box-shadow: 0 0 15px rgba(255, 76, 76, 0.15); }
+        .glow-error   { box-shadow: 0 0 15px rgba(255, 76, 76, 0.15); }
+
+        /* Threat level border + glow styles */
+        .threat-normal   { border-color: rgba(255,255,255,0.06); }
+        .threat-low      { border-color: #FACC15; box-shadow: 0 0 12px rgba(250,204,21,0.3); }
+        .threat-medium   { border-color: #FB923C; box-shadow: 0 0 14px rgba(251,146,60,0.4); }
+        .threat-high     { border-color: #EF4444; box-shadow: 0 0 18px rgba(239,68,68,0.5); }
+        .threat-critical {
+            border-color: #FF2222;
+            animation: critical-pulse 1s ease-in-out infinite alternate;
+        }
+        @keyframes critical-pulse {
+            from { box-shadow: 0 0 10px rgba(255,34,34,0.5); }
+            to   { box-shadow: 0 0 30px rgba(255,34,34,0.95); }
+        }
+
+        /* Dot colours per threat */
+        .dot-normal   { background: #00FF9C; }
+        .dot-low      { background: #FACC15; }
+        .dot-medium   { background: #FB923C; }
+        .dot-high     { background: #EF4444; }
+        .dot-critical { background: #FF2222; animation: critical-pulse 0.8s ease-in-out infinite alternate; }
+
+        /* Log modal */
+        #log-modal { display:none; }
+        #log-modal.open { display:flex; }
+        .log-line { font-size:11px; line-height:1.6; border-bottom:1px solid rgba(255,255,255,0.04); padding:4px 0; word-break:break-all; }
+        .log-line.critical { color:#FF4C4C; }
+        .log-line.high     { color:#EF4444; }
+        .log-line.medium   { color:#FB923C; }
+        .log-line.low      { color:#FACC15; }
+        .log-line.normal   { color:#9CA3AF; }
     </style>
 </head>
 <body class="min-h-screen p-8">
+
+    <!-- Log Modal -->
+    <div id="log-modal" class="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm items-center justify-center">
+        <div class="bg-[#111] border border-white/10 rounded-xl w-full max-w-3xl max-h-[80vh] flex flex-col shadow-2xl mx-4">
+            <div class="flex items-center justify-between p-4 border-b border-white/10">
+                <div>
+                    <h3 class="font-bold tracking-widest text-sm text-primary flex items-center gap-2">
+                        <span class="material-symbols-outlined text-sm">terminal</span>
+                        <span id="modal-title">ENDPOINT LOGS</span>
+                    </h3>
+                    <p id="modal-ip" class="text-xs text-gray-500 font-mono mt-0.5"></p>
+                </div>
+                <div class="flex items-center gap-2">
+                    <button id="modal-reset-btn" onclick="resetThreat()" class="text-[10px] font-bold px-3 py-1 rounded bg-white/10 hover:bg-white/20 text-gray-300 transition">RESET THREAT</button>
+                    <button onclick="closeModal()" class="material-symbols-outlined text-gray-400 hover:text-white transition">close</button>
+                </div>
+            </div>
+            <div id="modal-logs" class="overflow-y-auto p-4 flex-1 font-mono space-y-0.5">
+                <p class="text-gray-500 text-xs">Loading logs...</p>
+            </div>
+        </div>
+    </div>
 
     <!-- Header -->
     <header class="flex items-center justify-between mb-8 max-w-6xl mx-auto">
@@ -75,7 +128,6 @@
             </div>
             <span class="material-symbols-outlined text-5xl text-primary opacity-20">devices</span>
         </div>
-        
         <div class="glass-card p-6 flex items-center justify-between glow-error">
             <div>
                 <p class="text-xs text-gray-400 font-bold tracking-widest mb-1">TOTAL ALERTS</p>
@@ -106,19 +158,101 @@
         </div>
         <div class="p-6">
             <div id="alert-feed" class="space-y-4">
-                <!-- Alerts will be injected here -->
                 <p class="text-gray-500 text-sm text-center py-10">Waiting for endpoint telemetry...</p>
             </div>
         </div>
     </main>
 
     <script>
+        // ── Threat level helpers ─────────────────────────────────────
+        const THREAT_BORDER = {
+            normal:   'threat-normal',
+            low:      'threat-low',
+            medium:   'threat-medium',
+            high:     'threat-high',
+            critical: 'threat-critical'
+        };
+        const THREAT_DOT = {
+            normal:   'dot-normal',
+            low:      'dot-low',
+            medium:   'dot-medium',
+            high:     'dot-high',
+            critical: 'dot-critical'
+        };
+        const THREAT_LABEL = {
+            normal:   { text: 'NORMAL',   cls: 'text-primary' },
+            low:      { text: 'LOW',      cls: 'text-yellow-400' },
+            medium:   { text: 'MEDIUM',   cls: 'text-orange-400' },
+            high:     { text: 'HIGH',     cls: 'text-red-500' },
+            critical: { text: 'CRITICAL', cls: 'text-red-500 font-bold animate-pulse' }
+        };
+
+        // ── Modal state ──────────────────────────────────────────────
+        let currentModalIp = null;
+
+        function openModal(ip) {
+            currentModalIp = ip;
+            document.getElementById('modal-title').textContent = 'ENDPOINT LOGS — ' + ip;
+            document.getElementById('modal-ip').textContent = 'Showing last 200 events for this endpoint';
+            document.getElementById('modal-reset-btn').dataset.ip = ip;
+            document.getElementById('log-modal').classList.add('open');
+            loadEndpointLogs(ip);
+        }
+
+        function closeModal() {
+            document.getElementById('log-modal').classList.remove('open');
+            currentModalIp = null;
+        }
+
+        function classifyLine(line) {
+            const u = line.toUpperCase();
+            if (u.includes('YARA_MATCH') || u.includes('FILE_QUARANTINED') || u.includes('RANSOMWARE')) return 'critical';
+            if (u.includes('AI_DETECTED') || u.includes('REGISTRY_MODIFIED') || u.includes('PRIVILEGE'))  return 'high';
+            if (u.includes('RECEIVED ALERT') || u.includes('SUSPICIOUS') || u.includes('MALWARE'))         return 'medium';
+            if (u.includes('WARN'))  return 'low';
+            return 'normal';
+        }
+
+        async function loadEndpointLogs(ip) {
+            const container = document.getElementById('modal-logs');
+            container.innerHTML = '<p class="text-gray-500 text-xs">Loading...</p>';
+            try {
+                const safeIp = ip.replace(/\./g, '_');
+                const res = await fetch(`/api/endpoint/${safeIp}/logs`);
+                const data = await res.json();
+                if (!data.logs.length) {
+                    container.innerHTML = '<p class="text-gray-500 text-xs">No logs found for this endpoint.</p>';
+                    return;
+                }
+                container.innerHTML = '';
+                data.logs.forEach(line => {
+                    const level = classifyLine(line);
+                    const clean = line.replace(/.*\[ENDPOINT:.*?\]\s*/, '').replace('RECEIVED LOG: ', '').replace('RECEIVED ALERT: ', '');
+                    container.innerHTML += `<div class="log-line ${level}">${clean}</div>`;
+                });
+            } catch (e) {
+                container.innerHTML = '<p class="text-red-400 text-xs">Failed to load logs.</p>';
+            }
+        }
+
+        async function resetThreat() {
+            if (!currentModalIp) return;
+            const safeIp = currentModalIp.replace(/\./g, '_');
+            await fetch(`/api/endpoint/${safeIp}/reset`, { method: 'POST' });
+            closeModal();
+        }
+
+        // Close modal on backdrop click
+        document.getElementById('log-modal').addEventListener('click', function(e) {
+            if (e.target === this) closeModal();
+        });
+
+        // ── Main poll loop ───────────────────────────────────────────
         async function fetchAlerts() {
             try {
                 const response = await fetch('/api/alerts');
                 const data = await response.json();
-                
-                // Update Metrics
+
                 document.getElementById('endpoint-count').textContent = data.endpoints_count;
                 document.getElementById('alert-count').textContent = data.alerts.length;
 
@@ -127,20 +261,40 @@
                 if (data.endpoints_list && data.endpoints_list.length > 0) {
                     registry.innerHTML = '';
                     data.endpoints_list.forEach(ep => {
-                        const memGB = ep.total_memory_gb || '?';
-                        const lastSeen = ep.last_seen ? new Date(ep.last_seen + 'Z').toLocaleTimeString() : 'N/A';
+                        const memGB   = ep.total_memory_gb || '?';
+                        const level   = ep.threat_level || 'normal';
+                        const border  = THREAT_BORDER[level] || THREAT_BORDER.normal;
+                        const label   = THREAT_LABEL[level]  || THREAT_LABEL.normal;
+                        const safeIp  = ep.ip.replace(/\./g, '_');
+
+                        // Determine online/offline status
+                        const lastSeenDate = ep.last_seen ? new Date(ep.last_seen + 'Z') : null;
+                        const secondsAgo   = lastSeenDate ? (Date.now() - lastSeenDate.getTime()) / 1000 : 9999;
+                        const isOnline     = secondsAgo < 30;
+
+                        const dotClass    = isOnline ? (THREAT_DOT[level] || 'dot-normal') : 'bg-gray-600';
+                        const statusHtml  = isOnline
+                            ? `<span class="text-primary font-bold flex items-center gap-1"><span class="w-1.5 h-1.5 bg-primary rounded-full animate-pulse inline-block"></span>ONLINE</span>`
+                            : `<span class="text-red-400">${lastSeenDate ? lastSeenDate.toLocaleTimeString() : 'Unknown'} (offline)</span>`;
+
                         registry.innerHTML += `
-                        <div class="bg-[#1a1a1a] border border-white/5 rounded-lg p-4">
-                            <div class="flex items-center gap-2 mb-3">
-                                <span class="w-2 h-2 bg-primary rounded-full animate-pulse"></span>
-                                <span class="font-bold text-primary tracking-wider">${ep.hostname || ep.ip}</span>
+                        <div class="bg-[#1a1a1a] border rounded-lg p-4 transition-all duration-500 ${border}">
+                            <div class="flex items-center justify-between mb-3">
+                                <div class="flex items-center gap-2">
+                                    <span class="w-2 h-2 rounded-full ${dotClass} ${isOnline ? 'animate-pulse' : ''}"></span>
+                                    <span class="font-bold text-white tracking-wider">${ep.hostname || ep.ip}</span>
+                                    <span class="text-[10px] font-bold px-2 py-0.5 rounded-full border border-current ${label.cls}">${label.text}</span>
+                                </div>
+                                <button onclick="openModal('${ep.ip}')" class="flex items-center gap-1 text-[10px] font-bold text-gray-400 hover:text-primary transition px-2 py-1 rounded border border-white/10 hover:border-primary/40">
+                                    <span class="material-symbols-outlined text-xs">terminal</span> VIEW LOGS
+                                </button>
                             </div>
                             <div class="grid grid-cols-2 gap-x-4 gap-y-1 text-xs font-mono">
                                 <span class="text-gray-500">IP</span><span class="text-white">${ep.ip}</span>
                                 <span class="text-gray-500">OS</span><span class="text-white">${ep.os}</span>
                                 <span class="text-gray-500">CPU Cores</span><span class="text-white">${ep.cpu_count}</span>
                                 <span class="text-gray-500">RAM</span><span class="text-white">${memGB} GB</span>
-                                <span class="text-gray-500">Last Seen</span><span class="text-secondary">${lastSeen}</span>
+                                <span class="text-gray-500">Status</span><span>${statusHtml}</span>
                             </div>
                         </div>`;
                     });
@@ -149,51 +303,44 @@
                 // Render Alert Feed
                 const container = document.getElementById('alert-feed');
                 if (data.alerts.length > 0) {
-                    container.innerHTML = ''; // Clear loading message
+                    container.innerHTML = '';
                     data.alerts.forEach((alertStr) => {
-                        
-                        // Extract IP/Endpoint
                         let endpoint = "Unknown";
                         if (alertStr.includes("[ENDPOINT:")) {
                             endpoint = alertStr.split("[ENDPOINT:")[1].split("]")[0].trim();
                         }
-                        
-                        // Determine type
                         const isCritical = alertStr.includes("YARA_MATCH") || alertStr.includes("FILE_QUARANTINED") || alertStr.includes("RECEIVED ALERT");
                         const isAI = alertStr.includes("AI_DETECTED");
-                        let badgeColor = isCritical ? "bg-error text-white" : "bg-secondary text-black";
-                        let badgeText = isCritical ? "CRITICAL" : "INFO";
-                        
-                        if (isAI) {
-                            badgeColor = "bg-[#FF00FF] text-white";
-                            badgeText = "AI DETECTED";
-                        }
-                        
-                        // Clean up the message for display
+                        let badgeColor = isCritical ? "bg-error text-white" : "bg-secondary/20 text-secondary";
+                        let badgeText  = isCritical ? "CRITICAL" : "INFO";
+                        if (isAI) { badgeColor = "bg-[#FF00FF]/20 text-[#FF00FF]"; badgeText = "AI DETECTED"; }
+
                         let cleanMessage = alertStr.replace(/\[ENDPOINT:.*?\] /, '');
-                        cleanMessage = cleanMessage.replace("RECEIVED LOG: ", "");
-                        cleanMessage = cleanMessage.replace("RECEIVED ALERT: ", "");
-                        
+                        cleanMessage = cleanMessage.replace("RECEIVED LOG: ", "").replace("RECEIVED ALERT: ", "");
+
                         container.innerHTML += `
-                        <div class="p-4 bg-[#1a1a1a] border-l-4 ${isCritical ? 'border-error' : 'border-secondary'} rounded flex flex-col md:flex-row md:items-center justify-between gap-4">
+                        <div class="p-4 bg-[#1a1a1a] border-l-4 ${isCritical ? 'border-error' : isAI ? 'border-[#FF00FF]' : 'border-secondary'} rounded flex flex-col md:flex-row md:items-center justify-between gap-4">
                             <div>
                                 <div class="flex items-center gap-3 mb-2">
                                     <span class="text-[10px] font-bold px-2 py-0.5 rounded ${badgeColor}">${badgeText}</span>
-                                    <span class="text-xs font-mono text-gray-400">Endpoint IP: <span class="text-white">${endpoint}</span></span>
+                                    <span class="text-xs font-mono text-gray-400">Endpoint: <span class="text-white">${endpoint}</span></span>
                                 </div>
                                 <p class="text-sm font-mono text-gray-300 break-all">${cleanMessage}</p>
                             </div>
                         </div>`;
                     });
                 }
+
+                // Refresh modal if open
+                if (currentModalIp) loadEndpointLogs(currentModalIp);
+
             } catch (err) {
                 console.error("Failed to fetch API", err);
             }
         }
 
-        // Poll every 3 seconds
         setInterval(fetchAlerts, 3000);
-        
+
         async function fetchModel() {
             try {
                 const res = await fetch('/api/settings/model');
@@ -201,7 +348,7 @@
                 document.getElementById('model-select').value = data.model;
             } catch (err) {}
         }
-        
+
         async function setModel() {
             const model = document.getElementById('model-select').value;
             try {

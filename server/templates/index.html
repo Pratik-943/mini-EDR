@@ -196,10 +196,10 @@
         .dot-high     { background: #EF4444; box-shadow: 0 0 8px #EF4444; }
         .dot-critical { background: #FF003C; box-shadow: 0 0 15px #FF003C; animation: critical-pulse-intense 0.4s ease-in-out infinite alternate; }
 
-        /* Log modal */
-        #log-modal { display:none; }
-        #log-modal.open { display:flex; }
-        .log-line { font-size:10px; line-height:1.4; border-bottom:1px solid rgba(255,255,255,0.02); padding:2px 0; word-break:break-all; }
+        /* Modals */
+        #log-modal, #deploy-modal { display:none; }
+        #log-modal.open, #deploy-modal.open { display:flex; }
+        .log-line { font-size:10px; line-height:1.4; border-bottom:1px solid rgba(255,255,255,0.02); padding:2px 0; white-space:nowrap; }
         .log-line.critical { color:#FF003C; text-shadow: 0 0 5px rgba(255,0,60,0.5); }
         .log-line.high     { color:#EF4444; }
         .log-line.medium   { color:#FB923C; }
@@ -209,6 +209,31 @@
 </head>
 <body class="min-h-screen p-4 md:p-8 font-sans">
 <div class="scanline-sweep"></div>
+<!-- Deploy Modal -->
+<div class="fixed inset-0 z-[60] bg-black/90 backdrop-blur-md items-center justify-center p-4" id="deploy-modal">
+<div class="hud-modal w-full max-w-4xl flex flex-col mx-auto relative p-1">
+<div class="hud-corners"></div>
+<div class="hud-corners-br"></div>
+<div class="bg-[#050508] h-full w-full flex flex-col z-20 relative p-6 border border-[#00FF9C]/20">
+<div class="flex items-center justify-between mb-4 border-b border-[#00FF9C]/20 pb-3">
+<h3 class="font-mono font-bold tracking-[0.2em] text-sm text-primary flex items-center gap-2">
+<span class="material-symbols-outlined text-[18px]">rocket_launch</span>
+DEPLOY ENDPOINT COMMAND
+</h3>
+<button class="material-symbols-outlined text-gray-500 hover:text-primary transition" onclick="closeDeployModal()">close</button>
+</div>
+<p class="text-[11px] font-mono text-gray-400 mb-4 tracking-widest uppercase">Run this command in PowerShell as Administrator on the target Windows machine:</p>
+<div class="bg-[#0A2A5C]/20 border border-accent-blue/30 p-4 relative mb-6 overflow-x-auto shadow-[inset_0_0_15px_rgba(0,229,255,0.05)]">
+<code id="deploy-cmd" class="text-accent-blue text-xs font-mono whitespace-nowrap select-all"></code>
+</div>
+<div class="flex justify-end">
+<button id="copy-btn" class="bg-primary/20 border border-primary text-primary font-mono text-[10px] font-bold px-6 py-3 hover:bg-primary/40 transition tracking-widest uppercase flex items-center gap-2 shadow-[0_0_10px_rgba(0,255,156,0.2)]" onclick="copyCommand()">
+<span class="material-symbols-outlined text-sm">content_copy</span> COPY COMMAND
+</button>
+</div>
+</div>
+</div>
+</div>
 <!-- Log Modal -->
 <div class="fixed inset-0 z-50 bg-black/90 backdrop-blur-md items-center justify-center p-4" id="log-modal">
 <div class="hud-modal w-full max-w-4xl max-h-[85vh] flex flex-col mx-auto relative p-1">
@@ -228,7 +253,7 @@
 <button class="material-symbols-outlined text-gray-500 hover:text-primary transition" onclick="closeModal()">close</button>
 </div>
 </div>
-<div class="overflow-y-auto p-4 flex-1 font-mono space-y-0.5 bg-[#020203]" id="modal-logs">
+<div class="overflow-auto p-4 flex-1 font-mono space-y-0.5 bg-[#020203]" id="modal-logs">
 <p class="text-primary/50 text-[10px] uppercase tracking-widest animate-pulse">Initializing telemetry stream...</p>
 </div>
 </div>
@@ -244,9 +269,9 @@
 </div>
 </div>
 <div class="flex items-center gap-3 flex-wrap">
-<a class="bg-secondary/20 border border-secondary text-accent-blue font-mono text-[10px] font-bold px-4 py-2 hover:bg-secondary/40 transition flex items-center gap-2 tracking-widest uppercase" href="/deploy/dropper" target="_blank">
+<button class="bg-secondary/20 border border-secondary text-accent-blue font-mono text-[10px] font-bold px-4 py-2 hover:bg-secondary/40 transition flex items-center gap-2 tracking-widest uppercase" onclick="openDeployModal()">
 <span class="material-symbols-outlined text-sm">rocket_launch</span> DEPLOY ENDPOINT
-            </a>
+</button>
 <div class="tactical-panel px-3 py-1.5 flex items-center gap-2">
 <span class="material-symbols-outlined text-[10px] text-accent-blue/50">memory</span>
 <select class="bg-transparent text-[10px] font-mono font-bold tracking-[0.15em] text-accent-blue outline-none appearance-none cursor-pointer uppercase" id="model-select" onchange="setModel()">
@@ -397,9 +422,31 @@
             closeModal();
         }
 
+        function openDeployModal() {
+            const host = window.location.host;
+            const cmd = `$s="http://${host}"; Invoke-WebRequest -Uri "$s/download/agent" -OutFile "$env:TEMP\\agent.exe"; Start-Process "$env:TEMP\\agent.exe" -ArgumentList "$s/api/logs" -WindowStyle Hidden`;
+            document.getElementById('deploy-cmd').textContent = cmd;
+            document.getElementById('copy-btn').innerHTML = '<span class="material-symbols-outlined text-sm">content_copy</span> COPY COMMAND';
+            document.getElementById('deploy-modal').classList.add('open');
+        }
+
+        function closeDeployModal() {
+            document.getElementById('deploy-modal').classList.remove('open');
+        }
+
+        function copyCommand() {
+            const cmd = document.getElementById('deploy-cmd').textContent;
+            navigator.clipboard.writeText(cmd).then(() => {
+                document.getElementById('copy-btn').innerHTML = '<span class="material-symbols-outlined text-sm">check</span> COPIED!';
+            });
+        }
+
         // Close modal on backdrop click
         document.getElementById('log-modal').addEventListener('click', function(e) {
             if (e.target === this) closeModal();
+        });
+        document.getElementById('deploy-modal').addEventListener('click', function(e) {
+            if (e.target === this) closeDeployModal();
         });
 
         // ── Main poll loop ───────────────────────────────────────────

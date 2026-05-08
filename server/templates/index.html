@@ -199,7 +199,13 @@
         /* Modals */
         #log-modal, #deploy-modal { display:none; }
         #log-modal.open, #deploy-modal.open { display:flex; }
-        .log-line { font-size:10px; line-height:1.4; border-bottom:1px solid rgba(255,255,255,0.02); padding:2px 0; white-space:nowrap; }
+        .log-line { font-size:10px; line-height:1.4; border-bottom:1px solid rgba(255,255,255,0.02); padding:4px 0; white-space:pre-wrap; word-break:break-all; }
+        
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: #050508; border-left: 1px solid rgba(0, 255, 156, 0.1); }
+        ::-webkit-scrollbar-thumb { background: rgba(0, 255, 156, 0.3); border-radius: 3px; }
+        ::-webkit-scrollbar-thumb:hover { background: rgba(0, 255, 156, 0.6); }
         .log-line.critical { color:#FF003C; text-shadow: 0 0 5px rgba(255,0,60,0.5); }
         .log-line.high     { color:#EF4444; }
         .log-line.medium   { color:#FB923C; }
@@ -393,25 +399,32 @@ DEPLOY ENDPOINT COMMAND
             return 'normal';
         }
 
-        async function loadEndpointLogs(ip) {
+        async function loadEndpointLogs(ip, isPoll = false) {
             const container = document.getElementById('modal-logs');
-            container.innerHTML = '<p class="text-primary/50 text-[10px] uppercase tracking-widest animate-pulse">Establishing secure connection...</p>';
+            if (!isPoll) {
+                container.innerHTML = '<p class="text-primary/50 text-[10px] uppercase tracking-widest animate-pulse">Establishing secure connection...</p>';
+            }
             try {
                 const safeIp = ip.replace(/\./g, '_');
                 const res = await fetch(`/api/endpoint/${safeIp}/logs`);
                 const data = await res.json();
+                
+                let newHtml = '';
                 if (!data.logs.length) {
-                    container.innerHTML = '<p class="text-white/30 text-[10px] uppercase tracking-widest font-mono">No telemetry data available.</p>';
-                    return;
+                    newHtml = '<p class="text-white/30 text-[10px] uppercase tracking-widest font-mono">No telemetry data available.</p>';
+                } else {
+                    data.logs.forEach(line => {
+                        const level = classifyLine(line);
+                        const clean = line.replace(/.*\[ENDPOINT:.*?\]\s*/, '').replace('RECEIVED LOG: ', '').replace('RECEIVED ALERT: ', '');
+                        newHtml += `<div class="log-line ${level}">> ${clean}</div>`;
+                    });
                 }
-                container.innerHTML = '';
-                data.logs.forEach(line => {
-                    const level = classifyLine(line);
-                    const clean = line.replace(/.*\[ENDPOINT:.*?\]\s*/, '').replace('RECEIVED LOG: ', '').replace('RECEIVED ALERT: ', '');
-                    container.innerHTML += `<div class="log-line ${level}">> ${clean}</div>`;
-                });
+                
+                if (container.innerHTML !== newHtml) {
+                    container.innerHTML = newHtml;
+                }
             } catch (e) {
-                container.innerHTML = '<p class="text-error text-[10px] font-mono uppercase tracking-widest">ERR: Connection failed.</p>';
+                if (!isPoll) container.innerHTML = '<p class="text-error text-[10px] font-mono uppercase tracking-widest">ERR: Connection failed.</p>';
             }
         }
 
@@ -540,7 +553,7 @@ DEPLOY ENDPOINT COMMAND
                 }
 
                 // Refresh modal if open
-                if (currentModalIp) loadEndpointLogs(currentModalIp);
+                if (currentModalIp) loadEndpointLogs(currentModalIp, true);
 
             } catch (err) {
                 console.error("Failed to fetch API", err);

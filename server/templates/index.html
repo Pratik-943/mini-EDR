@@ -239,7 +239,7 @@ DEPLOY ENDPOINT COMMAND
 <div class="hud-modal w-full max-w-4xl max-h-[85vh] flex flex-col mx-auto relative p-1">
 <div class="hud-corners"></div>
 <div class="hud-corners-br"></div>
-<div class="bg-[#050508] h-full w-full flex flex-col z-20 relative">
+<div class="bg-[#050508] flex-1 w-full flex flex-col z-20 relative overflow-hidden">
 <div class="flex items-center justify-between p-3 border-b border-[#00FF9C]/20 bg-[#0A2A5C]/10">
 <div>
 <h3 class="font-mono font-bold tracking-[0.2em] text-xs text-primary flex items-center gap-2">
@@ -253,7 +253,7 @@ DEPLOY ENDPOINT COMMAND
 <button class="material-symbols-outlined text-gray-500 hover:text-primary transition" onclick="closeModal()">close</button>
 </div>
 </div>
-<div class="overflow-auto p-4 flex-1 font-mono space-y-0.5 bg-[#020203]" id="modal-logs">
+<div class="overflow-auto p-4 flex-1 min-h-0 font-mono space-y-0.5 bg-[#020203]" id="modal-logs">
 <p class="text-primary/50 text-[10px] uppercase tracking-widest animate-pulse">Initializing telemetry stream...</p>
 </div>
 </div>

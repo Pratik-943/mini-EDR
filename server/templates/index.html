@@ -450,7 +450,11 @@ DEPLOY ENDPOINT COMMAND
         function copyCommand() {
             const cmd = document.getElementById('deploy-cmd').textContent;
             navigator.clipboard.writeText(cmd).then(() => {
-                document.getElementById('copy-btn').innerHTML = '<span class="material-symbols-outlined text-sm">check</span> COPIED!';
+                const btn = document.getElementById('copy-btn');
+                btn.innerHTML = '<span class="material-symbols-outlined text-sm">check</span> COPIED!';
+                setTimeout(() => {
+                    btn.innerHTML = '<span class="material-symbols-outlined text-sm">content_copy</span> COPY COMMAND';
+                }, 3000);
             });
         }
 

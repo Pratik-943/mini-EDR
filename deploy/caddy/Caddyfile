@@ -1,0 +1,7 @@
+# Replace 192.168.56.10 with the static IP of your Ubuntu Server VM.
+# Caddy creates a private lab certificate authority with `tls internal`.
+https://192.168.56.10 {
+    tls internal
+    reverse_proxy 127.0.0.1:8000
+}
+

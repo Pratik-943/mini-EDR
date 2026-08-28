@@ -1,0 +1,18 @@
+- id: EDR-PS-001
+  title: Encoded PowerShell command
+  severity: high
+  mitre: T1059.001
+  description: PowerShell encoded commands can hide command content and deserve review.
+  when:
+    category: powershell
+    command_line_contains: -enc
+
+- id: EDR-YARA-001
+  title: YARA rule matched on endpoint
+  severity: high
+  mitre: T1204
+  description: A server-approved YARA rule matched a file on the endpoint.
+  when:
+    category: yara
+    action: match
+

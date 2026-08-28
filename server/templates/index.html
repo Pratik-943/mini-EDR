@@ -1,0 +1,19 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>mini-EDR // command</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <header><span class="mark">◈</span> MINI-EDR <span class="muted">// ENDPOINT COMMAND</span><span id="health">CONNECTING…</span></header>
+  <main>
+    <section><h1>ENDPOINTS</h1><div id="agents" class="panel">Loading endpoints…</div></section>
+    <section><h1>ALERT STREAM</h1><div id="alerts" class="panel">Loading alerts…</div></section>
+  </main>
+  <template id="alert-template"><article class="alert"><div class="severity"></div><div><strong class="title"></strong><span class="meta"></span><p class="description"></p><pre class="evidence"></pre></div></article></template>
+  <script src="/static/app.js"></script>
+</body>
+</html>
+

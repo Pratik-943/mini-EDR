@@ -7,10 +7,31 @@
   <link rel="stylesheet" href="/static/style.css">
 </head>
 <body>
-  <header><span class="mark">◈</span> MINI-EDR <span class="muted">// ENDPOINT COMMAND</span><span id="health">CONNECTING…</span></header>
-  <main>
-    <section><h1>ENDPOINTS</h1><div id="agents" class="panel">Loading endpoints…</div></section>
-    <section><h1>ALERT STREAM</h1><div id="alerts" class="panel">Loading alerts…</div></section>
+  <header><span class="mark">◈</span> MINI-EDR <span class="muted">// ENDPOINT COMMAND</span><span id="health">ADMIN ACCESS REQUIRED</span></header>
+  <section id="login" class="login panel">
+    <h1>ADMIN ACCESS</h1>
+    <p>Enter the server administrator token. It is retained only for this browser tab.</p>
+    <div class="form-row"><input id="admin-token" type="password" autocomplete="off" placeholder="Admin token"><button id="login-button">Unlock dashboard</button></div>
+    <p id="login-error" class="error"></p>
+  </section>
+  <main id="dashboard" hidden>
+    <section class="wide">
+      <h1>DEPLOY NEW AGENT</h1>
+      <div class="panel deploy-form">
+        <label>Operating system<select id="deployment-platform"><option value="windows">Windows</option><option value="linux">Linux</option></select></label>
+        <label>Unique agent name<input id="agent-name" maxlength="64" placeholder="e.g. finance-win-01"></label>
+        <label>Token validity<select id="deployment-expiry"><option value="60">60 minutes</option><option value="240">4 hours</option><option value="1440">24 hours</option></select></label>
+        <button id="create-deployment">Generate install command</button>
+      </div>
+      <div id="deployment-result" class="panel result" hidden><strong>ONE-TIME INSTALL COMMAND</strong><p>Copy it once and run it as Administrator (Windows) or with sudo (Linux). The token is never displayed again after this step.</p><pre id="install-command"></pre><p id="package-status"></p></div>
+    </section>
+    <section>
+      <h1>ENDPOINTS</h1><div id="agents" class="panel">Loading endpoints…</div>
+    </section>
+    <section>
+      <h1>ALERT STREAM</h1><div id="alerts" class="panel">Loading alerts…</div>
+    </section>
+    <section class="wide"><h1>DEPLOYMENT HISTORY</h1><div id="deployments" class="panel">Loading deployments…</div></section>
   </main>
   <template id="alert-template"><article class="alert"><div class="severity"></div><div><strong class="title"></strong><span class="meta"></span><p class="description"></p><pre class="evidence"></pre></div></article></template>
   <script src="/static/app.js"></script>

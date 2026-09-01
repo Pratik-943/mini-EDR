@@ -33,6 +33,7 @@ def initialize(database_path: Path) -> None:
             """
             CREATE TABLE IF NOT EXISTS agents (
                 id TEXT PRIMARY KEY,
+                agent_name TEXT NOT NULL UNIQUE,
                 hostname TEXT NOT NULL,
                 platform TEXT NOT NULL,
                 agent_version TEXT NOT NULL,
@@ -58,10 +59,28 @@ def initialize(database_path: Path) -> None:
                 created_at TEXT NOT NULL,
                 evidence_json TEXT NOT NULL
             );
+            CREATE TABLE IF NOT EXISTS deployments (
+                id TEXT PRIMARY KEY,
+                agent_name TEXT NOT NULL UNIQUE,
+                platform TEXT NOT NULL,
+                token_hash TEXT NOT NULL UNIQUE,
+                status TEXT NOT NULL,
+                created_at TEXT NOT NULL,
+                expires_at TEXT NOT NULL,
+                downloaded_at TEXT,
+                enrolled_at TEXT,
+                agent_id TEXT REFERENCES agents(id)
+            );
             CREATE INDEX IF NOT EXISTS idx_events_agent_received ON events(agent_id, received_at DESC);
             CREATE INDEX IF NOT EXISTS idx_alerts_created ON alerts(created_at DESC);
+            CREATE INDEX IF NOT EXISTS idx_deployments_status ON deployments(status, expires_at);
             """
         )
+
+        columns = {row["name"] for row in conn.execute("PRAGMA table_info(agents)").fetchall()}
+        if "agent_name" not in columns:
+            conn.execute("ALTER TABLE agents ADD COLUMN agent_name TEXT")
+            conn.execute("UPDATE agents SET agent_name = hostname WHERE agent_name IS NULL")
 
 
 def add_event(conn: sqlite3.Connection, agent_id: str, event: dict) -> None:
@@ -74,7 +93,7 @@ def add_event(conn: sqlite3.Connection, agent_id: str, event: dict) -> None:
 def list_agents(database_path: Path) -> list[dict]:
     with connection(database_path) as conn:
         rows = conn.execute(
-            "SELECT id, hostname, platform, agent_version, enrolled_at, last_seen_at FROM agents ORDER BY last_seen_at DESC"
+            "SELECT id, agent_name, hostname, platform, agent_version, enrolled_at, last_seen_at FROM agents ORDER BY last_seen_at DESC"
         ).fetchall()
     return [dict(row) for row in rows]
 
@@ -93,4 +112,3 @@ def list_alerts(database_path: Path, limit: int = 100) -> list[dict]:
         alert["evidence"] = json.loads(alert.pop("evidence_json"))
         result.append(alert)
     return result
-

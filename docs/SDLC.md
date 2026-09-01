@@ -29,10 +29,12 @@ Provide clear alerts when suspicious activity occurs on enrolled Windows or Linu
 - Agent enrollment, heartbeats, authenticated ingestion, storage, rules, alerts, and dashboard.
 - Acceptance: a simulated agent event generates a visible alert with evidence.
 
-### 2. Agent core and deployment
+### 2. Agent core and Wazuh-style deployment
 
+- Keep the complete repository on the Ubuntu server only. Endpoint users receive a generated install command, never a Git clone URL.
+- Add server-created, per-endpoint, expiring deployment tokens; store only their hashes and mark them active after one successful enrollment.
 - Add durable local queue, exponential retry, configuration file, health diagnostics, and agent update version reporting.
-- Package a signed Windows service installer and Linux systemd package/install script.
+- Package a signed Windows service installer and Linux systemd package/install script. Both must start automatically after reboot.
 - Acceptance: a disconnected endpoint retains events and safely uploads them after reconnecting.
 
 ### 3. Native log collection
@@ -80,4 +82,3 @@ Provide clear alerts when suspicious activity occurs on enrolled Windows or Linu
 - Full packet capture, direct ETW tracing, kernel drivers, and large-scale SIEM pipelines.
 - AI/LLM incident conclusions.
 - Elasticsearch, queues, Kubernetes, and multi-tenant design.
-

@@ -1,3 +1,4 @@
+import re
 from pathlib import Path
 
 from fastapi.testclient import TestClient
@@ -6,32 +7,51 @@ from server.app import create_app
 from server.config import Settings
 
 
+ADMIN_TOKEN = "a" * 32
+
+
 def make_client(tmp_path: Path) -> TestClient:
-    settings = Settings(bootstrap_token="a" * 32, database_path=tmp_path / "test.db", server_name="test")
+    settings = Settings(admin_token=ADMIN_TOKEN, database_path=tmp_path / "test.db", server_name="test")
     return TestClient(create_app(settings))
 
 
-def test_enroll_ingest_and_alert(tmp_path: Path) -> None:
+def create_deployment(client: TestClient, name: str = "win-test") -> tuple[dict, str]:
+    response = client.post("/api/v1/deployments", headers={"X-Admin-Token": ADMIN_TOKEN}, json={
+        "agent_name": name, "platform": "windows", "expires_in_minutes": 60,
+    })
+    assert response.status_code == 201
+    created = response.json()
+    match = re.search(r"/windows/([^']+)", created["install_command"])
+    assert match
+    return created, match.group(1)
+
+
+def test_one_time_deployment_enrolls_and_alerts(tmp_path: Path) -> None:
     with make_client(tmp_path) as client:
+        created, deployment_token = create_deployment(client)
+        assert "token" not in created
         enrolled = client.post("/api/v1/agents/enroll", json={
-            "enrollment_token": "a" * 32, "hostname": "win-test", "platform": "windows", "agent_version": "0.1.0",
+            "deployment_token": deployment_token, "hostname": "win-test-host", "platform": "windows", "agent_version": "0.2.0",
         })
         assert enrolled.status_code == 201
         token = enrolled.json()["agent_token"]
+        repeat = client.post("/api/v1/agents/enroll", json={
+            "deployment_token": deployment_token, "hostname": "another-host", "platform": "windows", "agent_version": "0.2.0",
+        })
+        assert repeat.status_code == 401
         ingested = client.post("/api/v1/events", headers={"Authorization": f"Bearer {token}"}, json={"events": [{
-            "timestamp": "2026-08-29T12:00:00Z", "platform": "windows", "category": "powershell",
+            "timestamp": "2026-09-01T12:00:00Z", "platform": "windows", "category": "powershell",
             "action": "script_block", "process_name": "powershell.exe", "command_line": "powershell -enc ZABlAG0AbwA=",
             "source": "fixture", "raw_event_id": "4104", "details": {},
         }]})
         assert ingested.status_code == 200
         assert len(ingested.json()["alert_ids"]) == 1
-        alerts = client.get("/api/v1/alerts")
-        assert alerts.status_code == 200
-        assert alerts.json()[0]["rule_id"] == "EDR-PS-001"
+        agents = client.get("/api/v1/agents", headers={"X-Admin-Token": ADMIN_TOKEN})
+        assert agents.json()[0]["agent_name"] == "win-test"
 
 
-def test_events_require_agent_authentication(tmp_path: Path) -> None:
+def test_deployments_require_admin_access(tmp_path: Path) -> None:
     with make_client(tmp_path) as client:
-        response = client.post("/api/v1/events", json={"events": []})
-        assert response.status_code == 422
+        assert client.get("/api/v1/deployments").status_code == 401
+        assert client.post("/api/v1/deployments", json={"agent_name": "linux-01", "platform": "linux"}).status_code == 401
 

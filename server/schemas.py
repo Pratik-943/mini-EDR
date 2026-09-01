@@ -7,10 +7,16 @@ from pydantic import BaseModel, Field, field_validator
 
 
 class EnrollmentRequest(BaseModel):
-    enrollment_token: str = Field(min_length=24, max_length=512)
+    deployment_token: str = Field(min_length=24, max_length=512)
     hostname: str = Field(min_length=1, max_length=255)
     platform: Literal["windows", "linux"]
     agent_version: str = Field(min_length=1, max_length=64)
+
+
+class DeploymentRequest(BaseModel):
+    agent_name: str = Field(min_length=1, max_length=64, pattern=r"^[A-Za-z0-9][A-Za-z0-9_.-]*$")
+    platform: Literal["windows", "linux"]
+    expires_in_minutes: int = Field(default=60, ge=5, le=1440)
 
 
 class EndpointEvent(BaseModel):
@@ -36,4 +42,3 @@ class EventBatch(BaseModel):
 
 class AlertStatusUpdate(BaseModel):
     status: Literal["new", "acknowledged", "closed", "false_positive"]
-

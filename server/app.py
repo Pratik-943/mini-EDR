@@ -160,7 +160,9 @@ def create_app(settings: Settings | None = None) -> FastAPI:
 if (-not ([Security.Principal.WindowsPrincipal] [Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)) {{ throw 'Run PowerShell as Administrator.' }}
 $package = Join-Path $env:TEMP 'mini-edr-agent.msi'
 Invoke-WebRequest -Uri '{download_url}' -OutFile $package
-Start-Process msiexec.exe -Wait -ArgumentList '/i', $package, '/qn', 'SERVER_URL={base_url}', 'DEPLOYMENT_TOKEN={token}', 'AGENT_NAME={deployment["agent_name"]}'
+Start-Process msiexec.exe -Wait -ArgumentList '/i', $package, '/qn'
+& "$env:ProgramFiles\mini-EDR Agent\mini-edr-agent.exe" configure --server-url '{base_url}' --deployment-token '{token}' --agent-name '{deployment["agent_name"]}'
+Start-Service -Name mini-edr-agent
 Write-Host 'mini-EDR agent installed. The service starts automatically.'
 '''
         return f'''#!/usr/bin/env bash

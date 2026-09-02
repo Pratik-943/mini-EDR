@@ -10,3 +10,5 @@ server/payloads/*.msi
 server/payloads/*.deb
 server/payloads/*.exe
 agent.json
+.build/
+dist/

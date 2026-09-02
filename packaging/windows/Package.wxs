@@ -1,0 +1,17 @@
+<Wix xmlns="http://wixtoolset.org/schemas/v4/wxs">
+  <Package Name="mini-EDR Agent" Manufacturer="mini-EDR" Version="0.2.0" UpgradeCode="E486C686-8B3D-4A2E-A0DC-839B5F553F70" Language="1033">
+    <MajorUpgrade DowngradeErrorMessage="A newer version of mini-EDR Agent is already installed." />
+    <MediaTemplate EmbedCab="yes" />
+    <StandardDirectory Id="ProgramFiles64Folder">
+      <Directory Id="INSTALLFOLDER" Name="mini-EDR Agent">
+        <Component Id="AgentServiceComponent" Bitness="always64">
+          <File Id="AgentExecutable" Source="$(var.AgentExecutable)" KeyPath="yes" />
+          <ServiceInstall Id="AgentService" Name="mini-edr-agent" DisplayName="mini-EDR Agent" Description="mini-EDR endpoint monitoring agent" Start="auto" Type="ownProcess" ErrorControl="normal" Vital="yes" Arguments="run" />
+          <ServiceControl Id="AgentServiceControl" Name="mini-edr-agent" Stop="both" Remove="uninstall" Wait="yes" />
+        </Component>
+      </Directory>
+    </StandardDirectory>
+    <Feature Id="MainFeature" Title="mini-EDR Agent" Level="1"><ComponentRef Id="AgentServiceComponent" /></Feature>
+  </Package>
+</Wix>
+

@@ -65,11 +65,11 @@ Pending tokens can be revoked from the dashboard. Expired, revoked, or used toke
 | Per-endpoint token generation, expiry, revocation, and one-time enrollment | Implemented |
 | Endpoint repository cloning | Removed from the deployment design |
 | Package download endpoint | Implemented; serves published agent artifacts only |
-| Windows MSI agent service | Packaging work still required |
-| Linux DEB agent service | Packaging work still required |
+| Windows MSI agent service | Build script and installer definition included |
+| Linux DEB agent service | Build script and systemd package definition included |
 | Native Windows/Linux log collectors | Next implementation phase |
 
-Do not generate a production deployment command until signed agent packages have been built and published under `server/payloads/`. Until then, the dashboard correctly reports that no package is published.
+Build and publish the Windows MSI and Linux DEB packages under `server/payloads/` before generating endpoint deployment commands. The package build and publish guide is in [packaging/README.md](packaging/README.md).
 
 ---
 
@@ -223,7 +223,7 @@ server/payloads/mini-edr-agent-windows.msi
 server/payloads/mini-edr-agent-linux-amd64.deb
 ```
 
-Package requirements are documented in [server/payloads/README.md](server/payloads/README.md). Build artifacts must be signed, verified, and copied to the Ubuntu server during release; they must not be committed to GitHub.
+Package requirements and exact build commands are documented in [packaging/README.md](packaging/README.md). Build artifacts must be signed, verified, and copied to the Ubuntu server during release; they must not be committed to GitHub.
 
 ## Server operations
 
@@ -242,4 +242,3 @@ Package requirements are documented in [server/payloads/README.md](server/payloa
 - Never disable certificate verification with `curl -k` or `verify=False`.
 - Use only safe test data. Do not download or execute malware.
 - Revoke unused deployments and rotate the admin token if it is exposed.
-

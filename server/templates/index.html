@@ -8,31 +8,61 @@
 </head>
 <body>
   <header><span class="mark">◈</span> MINI-EDR <span class="muted">// ENDPOINT COMMAND</span><span id="health">ADMIN ACCESS REQUIRED</span></header>
+
   <section id="login" class="login panel">
     <h1>ADMIN ACCESS</h1>
     <p>Enter the server administrator token. It is retained only for this browser tab.</p>
     <div class="form-row"><input id="admin-token" type="password" autocomplete="off" placeholder="Admin token"><button id="login-button">Unlock dashboard</button></div>
     <p id="login-error" class="error"></p>
   </section>
+
   <main id="dashboard" hidden>
-    <section class="wide">
-      <h1>DEPLOY NEW AGENT</h1>
-      <div class="panel deploy-form">
-        <label>Operating system<select id="deployment-platform"><option value="windows">Windows</option><option value="linux">Linux</option></select></label>
-        <label>Unique agent name<input id="agent-name" maxlength="64" placeholder="e.g. finance-win-01"></label>
-        <label>Token validity<select id="deployment-expiry"><option value="60">60 minutes</option><option value="240">4 hours</option><option value="1440">24 hours</option></select></label>
-        <button id="create-deployment">Generate install command</button>
-      </div>
-      <div id="deployment-result" class="panel result" hidden><strong>ONE-TIME INSTALL COMMAND</strong><p>Copy it once and run it as Administrator (Windows) or with sudo (Linux). The token is never displayed again after this step.</p><pre id="install-command"></pre><p id="package-status"></p></div>
+    <section class="wide agents-heading">
+      <div><h1>AGENTS</h1><p class="subtle">Deploy and monitor endpoint agents on this local network.</p></div>
+      <button id="open-deployment" class="primary-button">＋ Deploy new agent</button>
     </section>
-    <section>
-      <h1>ENDPOINTS</h1><div id="agents" class="panel">Loading endpoints…</div>
+    <section class="wide status-grid">
+      <div class="panel status-card"><strong id="active-count">0</strong><span>ACTIVE</span></div>
+      <div class="panel status-card"><strong id="pending-count">0</strong><span>PENDING</span></div>
+      <div class="panel status-card"><strong id="expired-count">0</strong><span>EXPIRED</span></div>
+      <div class="panel status-card"><strong id="package-count">0 / 2</strong><span>PACKAGES READY</span></div>
     </section>
-    <section>
-      <h1>ALERT STREAM</h1><div id="alerts" class="panel">Loading alerts…</div>
-    </section>
+    <section><h1>ENDPOINTS</h1><div id="agents" class="panel">Loading endpoints…</div></section>
+    <section><h1>ALERT STREAM</h1><div id="alerts" class="panel">Loading alerts…</div></section>
     <section class="wide"><h1>DEPLOYMENT HISTORY</h1><div id="deployments" class="panel">Loading deployments…</div></section>
   </main>
+
+  <dialog id="deployment-dialog" class="wizard">
+    <div class="wizard-header"><div><span class="eyebrow">AGENT DEPLOYMENT</span><h2>Deploy new agent</h2></div><button id="close-deployment" class="icon-button" aria-label="Close">×</button></div>
+    <div class="wizard-body">
+      <section class="wizard-step">
+        <span class="step-number">1</span><div><h3>Select the endpoint package</h3><p>Choose the operating system of the endpoint where the agent will be installed.</p>
+          <div class="package-cards">
+            <button class="package-card" data-platform="windows"><span class="package-icon">▣</span><strong>WINDOWS</strong><small>MSI · 64-bit</small><em data-ready="windows">Checking package…</em></button>
+            <button class="package-card" data-platform="linux"><span class="package-icon">◒</span><strong>LINUX</strong><small>DEB · amd64</small><em data-ready="linux">Checking package…</em></button>
+          </div>
+        </div>
+      </section>
+      <section class="wizard-step">
+        <span class="step-number">2</span><div><h3>Server address</h3><p>This is the address the agent uses to connect to mini-EDR.</p><input id="server-url" readonly></div>
+      </section>
+      <section class="wizard-step">
+        <span class="step-number">3</span><div><h3>Agent settings</h3><p>Each agent name must be unique. The deployment token is valid only for the selected time.</p>
+          <div class="form-row"><label>Agent name<input id="agent-name" maxlength="64" placeholder="e.g. windows-lab-01"></label><label>Token validity<select id="deployment-expiry"><option value="60">60 minutes</option><option value="240">4 hours</option><option value="1440">24 hours</option></select></label></div>
+          <p class="warning">A token can enroll only one endpoint. It cannot be reused after enrollment, revocation, or expiry.</p>
+        </div>
+      </section>
+      <section class="wizard-step command-step">
+        <span class="step-number">4</span><div><h3>Install command</h3><p>Run this command as Administrator on Windows or with <code>sudo</code> on Linux.</p>
+          <div id="command-empty" class="command-empty">Choose a published package, enter an agent name, then generate a command.</div>
+          <div id="command-result" hidden><textarea id="install-command" readonly wrap="off" aria-label="Installation command"></textarea><div class="command-actions"><button id="copy-command" class="primary-button">Copy command</button><span id="copy-status" aria-live="polite"></span></div></div>
+          <p id="deployment-message" class="error" aria-live="polite"></p>
+          <button id="generate-command" class="primary-button">Generate install command</button>
+        </div>
+      </section>
+    </div>
+  </dialog>
+
   <template id="alert-template"><article class="alert"><div class="severity"></div><div><strong class="title"></strong><span class="meta"></span><p class="description"></p><pre class="evidence"></pre></div></article></template>
   <script src="/static/app.js"></script>
 </body>

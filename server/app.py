@@ -77,6 +77,13 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         filename = "mini-edr-agent-windows.msi" if platform == "windows" else "mini-edr-agent-linux-amd64.deb"
         return payload_directory / filename
 
+    def expire_pending_deployments() -> None:
+        with connection(app_settings.database_path) as conn:
+            conn.execute(
+                "UPDATE deployments SET status = 'expired' WHERE status = 'pending' AND expires_at <= ?",
+                (datetime.now(timezone.utc).isoformat(),),
+            )
+
     @app.get("/api/health")
     def health() -> dict:
         return {"status": "ok", "service": app_settings.server_name, "rule_count": len(app.state.rules)}
@@ -112,13 +119,24 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             "package_ready": package_path(deployment.platform).is_file(),
         }
 
+    @app.get("/api/v1/deployment-options", dependencies=[Depends(authenticate_admin)])
+    def deployment_options(request: Request) -> dict:
+        return {
+            "server_url": public_url(request),
+            "packages": {
+                "windows": package_path("windows").is_file(),
+                "linux": package_path("linux").is_file(),
+            },
+        }
+
     @app.get("/api/v1/deployments", dependencies=[Depends(authenticate_admin)])
     def deployments() -> list[dict]:
+        expire_pending_deployments()
         with connection(app_settings.database_path) as conn:
             rows = conn.execute(
                 "SELECT id, agent_name, platform, status, created_at, expires_at, downloaded_at, enrolled_at, agent_id FROM deployments ORDER BY created_at DESC"
             ).fetchall()
-        return [dict(row) for row in rows]
+        return [{**dict(row), "package_ready": package_path(row["platform"]).is_file()} for row in rows]
 
     @app.post("/api/v1/deployments/{deployment_id}/revoke", dependencies=[Depends(authenticate_admin)])
     def revoke_deployment(deployment_id: str) -> dict:

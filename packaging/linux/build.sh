@@ -12,6 +12,7 @@ rm -rf "$BUILD_DIR"
 mkdir -p "$BUILD_DIR" "$DIST_DIR"
 python3 -m venv "$VENV_DIR"
 "$VENV_DIR/bin/python" -m pip install --upgrade pip pyinstaller
+"$VENV_DIR/bin/python" -m pip install -r "$ROOT/requirements.txt"
 "$VENV_DIR/bin/pyinstaller" --noconfirm --clean --onefile --name mini-edr-agent --paths "$ROOT" --distpath "$BUILD_DIR/dist" --workpath "$BUILD_DIR/work" --specpath "$BUILD_DIR/spec" "$ROOT/agent/main.py"
 
 install -d "$STAGE_DIR/DEBIAN" "$STAGE_DIR/opt/mini-edr-agent" "$STAGE_DIR/usr/local/bin" "$STAGE_DIR/lib/systemd/system"
@@ -66,4 +67,3 @@ EOF
 
 dpkg-deb --build --root-owner-group "$STAGE_DIR" "$DIST_DIR/mini-edr-agent-linux-amd64.deb"
 echo "Built $DIST_DIR/mini-edr-agent-linux-amd64.deb"
-
